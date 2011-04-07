@@ -1,10 +1,110 @@
 <html>
 
 <body>
-  <script src="jquery.js"></script>
-  <script src="jquery.ui.widget.js"></script>
+  <script src="tests/lib/jquery.js"></script>
+  <script src="tests/lib/jquery.ui.widget.js"></script>
+  <script src="tests/lib/jquery.mockjax.js"></script>
   <script src="jquery.trafficlight.js"></script>
-  
-</body>
 
+  <ul id="steps">
+    <li id="identifyUser">Getting your info</li>
+    <li id="acceptTerms">
+      <input type="checkbox" id="termsCheck"> 
+      I accept the terms of use. 
+      <input type="submit" id="termsSubmit" value="Continue"> 
+    </li>
+    <li id="getContacts">Importing your contacts</li>
+    <li id="registerForeignService">Registering you with another service...</li>
+    <li id="welcomeBack">Welcome back!</li>
+  </ul>
+  
+  <script>
+    $("steps").trafficlight({
+      steps: [
+        { // step 1: figure out who the user is
+          selector: "#identifyUser",
+          url: "identify_user"
+        },
+        { // step 2: import their contacts
+          selector: "#getContacts",
+          url: "get_contacts"
+        },
+        { // step 3: make another API call to some service
+          selector: "#registerForeignService",
+          url: "register_with_service"
+        }
+      ],
+      
+      success: function(successData) {
+        // see if we need to accept the terms
+        if (successData.response.needsTerms) {
+          var that = this;
+          // pause the app
+          // kick us back a step as well, so we rerun whatever caused it
+          this.trafficlight("pause").option("currentStep", this.trafficlight.option("currentStep") - 1)
+
+          // show the terms
+          $("#acceptTerms").show();
+          $("#termsSubmit").click(function() {
+            if ($("#termsCheck").attr("checked")) {
+              // mark that terms have been accepted
+              // need to write an accessor for this
+              var nextArgs = that.trafficlight.options("nextArgs");
+              nextArgs.acceptedTerms = true;
+              that.trafficlight.options("nextArgs", nextArgs);
+              // resume operation
+              that.trafficlight.start();
+              $("#acceptTerms").hide();
+            }
+            else {
+              alert("You must accept the terms to continue!");
+            }
+            
+            return false;
+          })
+        }
+      },
+      
+    })
+  
+  </script>
+  
+  
+  <style>
+    .trafficlight-todo {
+      list-style-image: url('assets/Gray_Light_Icon.png');
+      color: gray;
+    }
+    
+    .trafficlight-doing {
+      list-style-image: url('assets/Yellow_Light_Icon.png');      
+      font-weight: bold;
+    }
+    
+    .trafficlight-done {
+      list-style-image: url('assets/Green_Light_Icon.png');
+    }
+
+    .trafficlight-failed {
+      list-style-image: url('assets/Red_Light_Icon.png');
+    }
+    
+    #accept {
+      display: none;
+      list-style: none;
+    }
+    
+    #attribs {
+      text-align: center; 
+      position: absolute; 
+      bottom: 2px; 
+      width: 100%;
+    }
+  </style>
+  
+  <div id="attribs">
+    Thanks to <a href="http://commons.wikimedia.org/wiki/Special:Contributions/1RadicalOne" target="_blank">1RadicalOne</a>
+    for sharing his cool icons via the Creative Commons license.
+  </div>
+</body>
 </html>

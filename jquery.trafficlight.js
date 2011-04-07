@@ -84,6 +84,7 @@
     
     pause: function() {
       this.paused = true;
+      return this;
     },
   
     start: function(startStep) {
@@ -94,21 +95,24 @@
       this.paused = true;
       
       this._proceed();
+      return this;
     },
   
     _proceed: function() {
       // advance to the next step
       var options = this.options,
-          currentStep = options.currentStep,
+          currentStep = options.currentStep || 0, 
           stepDetails = options.steps[currentStep],
-          destination, node, data;
+          destination, node, data, that = this;
       
       var lastResults = this.results[currentStep - 1];
       
       if (stepDetails) {
         destination = stepDetails.url;
         node = $(stepDetails.selector);
-        step.data = $.extend({}, this.options.args || {}, this.options.nextArgs || {}, stepDetails.args || {});  
+        // store the data and use it if possible, so we can rerun steps
+        // is this the right way to do it, or should we merge data back in?
+        step.data = step.data || $.extend({}, this.options.args || {}, this.options.nextArgs || {}, stepDetails.args || {});  
     
         if (typeof(destination) === "function") {
           // if they've supplied a function, call it
@@ -121,7 +125,13 @@
         // now make the Ajax call
         jQuery.ajax(destination, {
           success: this._callSucceeded,
-          error: this._callErrored,
+          error: function(jqXHR, textStatus, errorThrown) {
+            that._callErrored({
+              jqXHR: jqXHR,
+              text: text,
+              exception: errorThrown
+            })
+          },
           data: step.data,
           type: stepDetails.method || "get"
         })
@@ -131,7 +141,7 @@
       }
     },
     
-    this._callSucceeded: function(data) {
+    _callSucceeded: function(data) {
       // a call succeeded!  trigger our success functions
       var options = this.options, step = options.steps[options.currentStep];
       var successData = {
@@ -141,13 +151,14 @@
       
       // store data and clean up temporary arguments
       this.results[step] = data;
+      // this should happen only if neither success function triggers error
       this.options.nextArgs = {};
       
       // update the DOM node
       $(step.selector).removeClass(options.toDoClass).removeClass(options.doingClass).removeClass(options.failedClass).addClass(options.doneClass);      
       
       if (typeof(step.success) === "function") {
-        step.success(successData);
+        step.success.apply(this.element, successData);
       }
       
       this._trigger("success", successData);
@@ -155,25 +166,30 @@
       // now, advance to the next step
       options.currentStep++;
       
-      // and if we're not paused, proceed
+      if (options.currentStep === options.steps.length) {
+        // we're done!
+        this._trigger("complete", successData);
+      }
       if (!this.paused) {
+        // otherwise, if we're not paused, proceed
         this._proceed(data);
       }
     },
     
-    this._callErrored: function(jqXHR, textStatus, errorThrown) {
+    error: function(textStatus, additionalDetails) {
+      this._callErrored({text: textStatus, details: additionalDetails});
+      return this;
+    },
+    
+    _callErrored: function(errorData) {
       // error!  call the local and global error functions
       var options = this.options, step = options.steps[options.currentStep];
       var stepErrorResult, globalErrorResult;
-      var errorData = {
-        text: textStatus,
-        exception: errorThrown,
-        step: step
-      };
+      errorData.step = step;
       
       // call the step-specific and global error handlers
       if (typeof(step.error) === "function") {
-        stepErrorResult = step.error(errorData)
+        stepErrorResult = step.error.apply(this.element, errorData)
       }
       globalErrorResult = this._trigger("error", errorData);
       
