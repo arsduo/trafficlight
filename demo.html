@@ -1,4 +1,7 @@
 <html>
+<head>
+  <title>Trafficlight Demo</title>
+</head>
 
 <body>
   <script src="tests/lib/jquery.js"></script>
@@ -6,6 +9,10 @@
   <script src="tests/lib/jquery.mockjax.js"></script>
   <script src="jquery.trafficlight.js"></script>
 
+  <p>
+    <a href="#" onclick="trafficLightDemo.start(); return false;">go</a>
+  </p>
+  
   <ul id="steps">
     <li id="identifyUser">Getting your info</li>
     <li id="acceptTerms">
@@ -15,11 +22,72 @@
     </li>
     <li id="getContacts">Importing your contacts</li>
     <li id="registerForeignService">Registering you with another service...</li>
-    <li id="welcomeBack">Welcome back!</li>
+    <li id="welcomeBack" class="trafficlight-todo">Welcome back!</li>
   </ul>
   
   <script>
-    $("steps").trafficlight({
+    var trafficLightDemo = (function() {
+      var termsError = "needsTerms";
+
+      return {
+        start: function() {
+          $("#steps").trafficlight("start");
+        },
+        
+        success: function(jQevent, successData) {
+          // see if we need to accept the terms          
+          if (successData.response.needsTerms) {
+            var element = $(this);
+            
+            // pause the app
+            // kick us back a step as well, so we rerun whatever caused it
+            element.trafficlight("error", termsError);
+            
+            // show the terms
+            $("#acceptTerms").slideDown();
+            $("#termsSubmit").click(function() {
+              if ($("#termsCheck").attr("checked")) {
+                // mark that terms have been accepted
+                successData.step.args.acceptedTerms = true;
+                // resume operation
+                element.trafficlight("start");
+                $("#acceptTerms").slideUp();
+              }
+              else {
+                alert("You must accept the terms to continue!");
+              }
+            
+              return false;
+            })
+          }
+        },
+        
+        complete: function(jQevent, successData) {
+          $("#welcomeBack").removeClass("trafficlight-todo").addClass("trafficlight-done");
+        }
+      }
+    }());
+  
+    
+    // set up mock ajax
+    $.mockjax(function(settings) {
+      if (settings.url == "identify_user" && !(settings.data && settings.data.acceptedTerms)) {
+        // throw a terms error
+        return {
+          responseText: {needsTerms: true},
+          responseTime: 750
+        }
+      }
+      else {
+        return {
+          responseTime: 750,
+          responseText: {ok: true}
+        }
+      }
+    })
+  
+  
+    $("#steps").trafficlight({
       steps: [
         { // step 1: figure out who the user is
           selector: "#identifyUser",
@@ -35,63 +103,54 @@
         }
       ],
       
-      success: function(successData) {
-        // see if we need to accept the terms
-        if (successData.response.needsTerms) {
-          var that = this;
-          // pause the app
-          // kick us back a step as well, so we rerun whatever caused it
-          this.trafficlight("pause").option("currentStep", this.trafficlight.option("currentStep") - 1)
-
-          // show the terms
-          $("#acceptTerms").show();
-          $("#termsSubmit").click(function() {
-            if ($("#termsCheck").attr("checked")) {
-              // mark that terms have been accepted
-              // need to write an accessor for this
-              var nextArgs = that.trafficlight.options("nextArgs");
-              nextArgs.acceptedTerms = true;
-              that.trafficlight.options("nextArgs", nextArgs);
-              // resume operation
-              that.trafficlight.start();
-              $("#acceptTerms").hide();
-            }
-            else {
-              alert("You must accept the terms to continue!");
-            }
-            
-            return false;
-          })
-        }
-      },
-      
+      success: trafficLightDemo.success,
+      complete: trafficLightDemo.complete
     })
   
   </script>
   
   
   <style>
+    #steps {
+      font-size: 20px;
+      padding-left: 0;
+      margin-left: 30px;
+    }
+    
+    #steps li {
+      padding-left: 23px;
+      margin-bottom: 3px;
+    }
+  
     .trafficlight-todo {
-      list-style-image: url('assets/Gray_Light_Icon.png');
+      list-style: none;
+      background: url('assets/graylight.png') no-repeat center left;
       color: gray;
     }
-    
+
     .trafficlight-doing {
-      list-style-image: url('assets/Yellow_Light_Icon.png');      
+      list-style: none;
+      background: url('assets/yellowlight.png') no-repeat center left;      
       font-weight: bold;
     }
-    
+
     .trafficlight-done {
-      list-style-image: url('assets/Green_Light_Icon.png');
+      list-style: none;
+      background: url('assets/greenlight.png') no-repeat center left;
     }
 
     .trafficlight-failed {
-      list-style-image: url('assets/Red_Light_Icon.png');
+      list-style: none;
+      background: url('assets/redlight.png') no-repeat center left;
     }
     
-    #accept {
-      display: none;
-      list-style: none;
+    #welcomeBack.trafficlight-done {
+      font-weight: bold;
+    }
+    
+    #acceptTerms {
+      display: none;;
+      list-style: none;;
     }
     
     #attribs {
