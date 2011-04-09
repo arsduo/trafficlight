@@ -9,21 +9,60 @@
   <script src="tests/lib/jquery.mockjax.js"></script>
   <script src="jquery.trafficlight.js"></script>
 
-  <p>
-    <a href="#" onclick="trafficLightDemo.start(); return false;">go</a>
-  </p>
+  <div id="setup">
+    <div id="choices">
+      <div id="title">
+        Choose a Demo
+      </div>
+            
+      <div class="choice">
+        <input type="radio" value="stopResume" name="demoType" checked="checked">Accept the Terms (stop/resume)
+      </div>
+      <div class="choice">
+        <input type="radio" value="timeout" name="demoType">Timeout error
+      </div>
+      <div class="choice">
+        <input type="radio" value="timeout" name="demoType">Info from a Form (pause/resume)
+      </div>
+
+      <div id="startDemo">
+        <input type="submit" value="Start demo" onclick="trafficLightDemo.start(); return false;" />
+      </div>
+    </div>
+    
+    <div id="explanations">
+      <p>
+        Scenario: we're signing a user in (or up) after receiving an OAuth token.
+      </p>
+      
+      <p id="stopResume" class="explanation">
+        In this demo, the user has never signed up for our service before, so they have to accept the terms &amp; conditions before the server signs them in.  We do this in our "success" handler by triggering an error to stop trafficlight (this keeps us on the first step); when the user has accepted the terms, we update the Ajax arguments and resume.
+      </p>
+      
+      <p id="timeout" class="explanation">
+        In this demo, we try to call our remote service, but it times out (an automatic error).  We retry once, but it fails again, so we tell the user to come back later.
+      </p>
+      
+      <p id="form" class="explanation">
+        In this demo, we ask the user for some information when signing them in.  This is similar to the first demo, but instead of erroring and redoing the first step, we use the pause method and continue on with the second step.
+      </p>
+      
+    </div>
+  </div>
   
-  <ul id="steps">
-    <li id="identifyUser">Getting your info</li>
-    <li id="acceptTerms">
-      <input type="checkbox" id="termsCheck"> 
-      I accept the terms of use. 
-      <input type="submit" id="termsSubmit" value="Continue"> 
-    </li>
-    <li id="getContacts">Importing your contacts</li>
-    <li id="registerForeignService">Registering you with another service...</li>
-    <li id="welcomeBack" class="trafficlight-todo">Welcome back!</li>
-  </ul>
+  <div id="demoBox">
+    <ul id="steps">
+      <li id="identifyUser">Getting your info</li>
+      <li id="acceptTerms">
+        <input type="checkbox" id="termsCheck"> 
+        I accept the terms of use. 
+        <input type="submit" id="termsSubmit" value="Continue"> 
+      </li>
+      <li id="getContacts">Importing your contacts</li>
+      <li id="registerForeignService">Registering you with another service...</li>
+      <li id="welcomeBack" class="trafficlight-todo">Welcome back!</li>
+    </ul>
+  </div>
   
   <script>
     var trafficLightDemo = (function() {
@@ -111,10 +150,63 @@
   
   
   <style>
-    #steps {
+    body {
+    	font-family: Verdana, Arial, sans-serif;
+    	font-size: 12px;
+    }
+    
+    /* setup and explanations */
+    #setup {
+      margin: 30px;
+      width: 300px;
+      padding: 20px;
+      display: inline-block;
+      background: none repeat scroll 0 0 #FFFFEE;
+      border: 2px solid black;
+      border-radius: 18px 18px 18px 18px;
+    }
+    
+    #choices {
+      font-size: 1.2em;
+    }
+    
+    #title {
+      font-weight: bold;
+    }
+    
+    #explanations {
+      position: relative;
+      height: 200px;
+    }
+    
+    .explanation {
+      position: absolute;
+      display: none;
+      top: 30px;
+    }
+    
+    #startDemo {
+      margin-top: 3px;
+    }
+    
+    /* demo */
+    
+    #demoBox {
+      background: none repeat scroll 0 0 #FFFFEE;
+      border: 2px solid black;
+      border-radius: 18px 18px 18px 18px;
+      display: inline-block;      
       font-size: 20px;
+      width: 470px;
+      margin-left: 70px;
+      vertical-align: top;
+      margin-top: 100px;
+    }
+
+    #steps {
       padding-left: 0;
-      margin-left: 30px;
+      margin-left: 40px;
+      width: 400px;
     }
     
     #steps li {
