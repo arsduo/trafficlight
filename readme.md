@@ -1,3 +1,1 @@
-Trafficlight is a simple jQuery plugin to perform sequential Ajax requests with feedback to the user -- for instance, making several requests to external APIs (Facebook, Google, etc.).
-
-Check out the demo at <a href="http://demos.alexkoppel.com/trafficlight/demo.html">http://demos.alexkoppel.com/trafficlight/demo.html</a>.
+Trafficlight is a simple jQuery plugin to perform sequential Ajax requests with feedback to the user -- for instance, making several requests to external APIs (Facebook, Google, etc.)  I haven't written documentation yet, but will soon -- in the meanwhile, check out the source for the the demo: <a href="http://demos.alexkoppel.com/trafficlight/demo.html">http://demos.alexkoppel.com/trafficlight/demo.html</a>.
