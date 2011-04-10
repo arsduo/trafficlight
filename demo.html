@@ -16,13 +16,16 @@
       </div>
             
       <div class="choice">
-        <input type="radio" value="stopResume" name="demoType" checked="checked">Accept the Terms (stop/resume)
+        <input type="radio" value="terms" name="demoType" id="type1" checked="checked">
+        <label for="type1">Accept the Terms (error/resume)</label>
       </div>
       <div class="choice">
-        <input type="radio" value="timeout" name="demoType">Timeout error
+        <input type="radio" value="timeout" name="demoType" id="type2">
+        <label for="type2">Timeout error</label>
       </div>
       <div class="choice">
-        <input type="radio" value="timeout" name="demoType">Info from a Form (pause/resume)
+        <input type="radio" value="form" name="demoType" id="type3">
+        <label for="type3">Info from a Form (pause/resume)</label>
       </div>
 
       <div id="startDemo">
@@ -32,10 +35,10 @@
     
     <div id="explanations">
       <p>
-        Scenario: we're signing a user in (or up) after receiving an OAuth token.
+        Scenario: we're signing a user in (or up) after receiving an OAuth token, which involves several calls to an outside service.
       </p>
       
-      <p id="stopResume" class="explanation">
+      <p id="terms" class="explanation">
         In this demo, the user has never signed up for our service before, so they have to accept the terms &amp; conditions before the server signs them in.  We do this in our "success" handler by triggering an error to stop trafficlight (this keeps us on the first step); when the user has accepted the terms, we update the Ajax arguments and resume.
       </p>
       
@@ -52,14 +55,34 @@
   
   <div id="demoBox">
     <ul id="steps">
-      <li id="identifyUser">Getting your info</li>
-      <li id="acceptTerms">
+      <li id="identifyUser" class="trafficlight-todo">Getting your info</li>
+      <li id="acceptTerms" class="demoContent">
         <input type="checkbox" id="termsCheck"> 
-        I accept the terms of use. 
+        <label for="termsCheck">I accept the terms of use.</label> 
         <input type="submit" id="termsSubmit" value="Continue"> 
       </li>
-      <li id="getContacts">Importing your contacts</li>
-      <li id="registerForeignService">Registering you with another service...</li>
+      <li id="getContacts" class="trafficlight-todo">Importing your contacts</li>
+      <li id="timeoutWarning" class="demoContent warning">
+        Googbookhoo!hub.fm isn't responding!  Let's try again...
+      </li>
+      <li id="timeoutError" class="demoContent warning">
+        Googbookhoo!hub.fm seems to be down :( try again later.
+      </li>
+      <li id="formContent" class="demoContent">
+        <div>Want to tell us a little about yourself?</div>
+        <select>
+          <option>Your Age</option>
+          <option>-18</option>
+          <option>18-32</option>
+          <option>32-65</option>
+          <option>I'm a vampire</option>
+        </select><br/>
+        <input type="checkbox" id="spam">
+        <label for="spam">Send me spam!</label><br/>
+        <input type="submit" class="formSubmit" value="Submit"> 
+        <input type="submit" class="formSubmit" value="Skip">         
+      </li>
+      <li id="registerForeignService" class="trafficlight-todo">Subscribing to your feed</li>
       <li id="welcomeBack" class="trafficlight-todo">Welcome back!</li>
     </ul>
   </div>
@@ -69,15 +92,62 @@
       var termsError = "needsTerms";
 
       return {
+        init: function() {          
+          $(".choice input").click(this.changeDemoTypeExplanation);
+          this.changeDemoTypeExplanation();
+        },
+        
+        changeDemoTypeExplanation: function() {
+          $(".explanation").fadeOut();
+          $("#" + $("input[name=demoType]:checked").val()).fadeIn();
+        },
+        
         start: function() {
-          $("#steps").trafficlight("start");
+          this.demoType = $("input[name=demoType]:checked").val();
+          this.errorCount = 0;
+          $("#welcomeBack").addClass("trafficlight-todo").removeClass("trafficlight-done");
+          
+          $(".demoContent").slideUp();
+          
+          $("#steps").trafficlight("destroy").trafficlight({
+            steps: [
+              { // step 1: figure out who the user is
+                selector: "#identifyUser",
+                url: "identify_user",
+                success: (function() {
+                  if (trafficLightDemo.demoType === "form") {
+                    return function() {
+                      // do form stuff
+                    }
+                  }
+                }())
+              },
+              { // step 2: import their contacts
+                selector: "#getContacts",
+                url: "get_contacts"
+              },
+              { // step 3: make another API call to some service
+                selector: "#registerForeignService",
+                url: "register_with_service"
+              }
+            ],
+            ajaxOptions: { timeout: 1441 },
+            autostart: false,
+
+            // callbacks
+            error: trafficLightDemo.error,
+            success: trafficLightDemo.success,
+            complete: trafficLightDemo.complete
+          })
+
+
+          $("#steps").trafficlight("reset").trafficlight("start");
         },
         
         success: function(jQevent, successData) {
-          // see if we need to accept the terms          
-          if (successData.response.needsTerms) {
-            var element = $(this);
-            
+          // see if we need to accept the terms  
+          var demo = trafficLightDemo, demoType = demo.demoType, element = $(this);
+          if (demoType === "terms" && successData.response.needsTerms) {
             // pause the app
             // kick us back a step as well, so we rerun whatever caused it
             element.trafficlight("error", termsError);
@@ -99,6 +169,36 @@
               return false;
             })
           }
+          else if (demoType === "form" && element.trafficlight("option", "currentStep") === 1) {
+            // pause, not error, until the user does whatnot with the form
+            element.trafficlight("pause");
+            // display a form for that demo
+            $("#formContent").slideDown();
+            $(".formSubmit").click(function() {
+              $("#formContent").slideUp();
+              element.trafficlight("start");          
+            })
+          }
+        },
+        
+        error: function(jQevent, errorData) {
+          var demo = trafficLightDemo, demoType = demo.demoType, element = $(this);
+          if (demoType === "timeout" && errorData.text === "timeout") {
+            if (!demo.errorCount) {
+              demo.errorCount = 1;
+              $("#timeoutWarning").slideDown();
+              // give people a chance to read the error msg before starting again
+              setTimeout(function() {
+                $("#timeoutWarning").slideUp();
+                element.trafficlight("start");
+              }, 3000)
+            }
+            else {
+              $("#timeoutError").slideDown();
+              // note that here, we don't resume the process
+              // two timeouts means it's over
+            }
+          }
         },
         
         complete: function(jQevent, successData) {
@@ -110,42 +210,28 @@
     
     // set up mock ajax
     $.mockjax(function(settings) {
-      if (settings.url == "identify_user" && !(settings.data && settings.data.acceptedTerms)) {
+      var demo = trafficLightDemo;
+      if (demo.demoType === "terms" && settings.url === "identify_user" && !(settings.data && settings.data.acceptedTerms)) {
         // throw a terms error
         return {
           responseText: {needsTerms: true},
-          responseTime: 750
+          responseTime: 1400
         }
+      }
+      else if (demo.demoType === "timeout" && settings.url == "get_contacts"){
+        return {
+          responseTime: 1500
+        };
       }
       else {
         return {
-          responseTime: 750,
+          responseTime: 1400,
           responseText: {ok: true}
         }
       }
     })
   
-  
-    $("#steps").trafficlight({
-      steps: [
-        { // step 1: figure out who the user is
-          selector: "#identifyUser",
-          url: "identify_user"
-        },
-        { // step 2: import their contacts
-          selector: "#getContacts",
-          url: "get_contacts"
-        },
-        { // step 3: make another API call to some service
-          selector: "#registerForeignService",
-          url: "register_with_service"
-        }
-      ],
-      
-      success: trafficLightDemo.success,
-      complete: trafficLightDemo.complete
-    })
-  
+    trafficLightDemo.init();  
   </script>
   
   
@@ -182,7 +268,7 @@
     .explanation {
       position: absolute;
       display: none;
-      top: 30px;
+      top: 48px;
     }
     
     #startDemo {
@@ -240,9 +326,13 @@
       font-weight: bold;
     }
     
-    #acceptTerms {
-      display: none;;
-      list-style: none;;
+    .demoContent {
+      display: none;
+      list-style: none;
+    }
+    
+    .warning {
+      font-size: 14px;
     }
     
     #attribs {
@@ -254,8 +344,14 @@
   </style>
   
   <div id="attribs">
-    Thanks to <a href="http://commons.wikimedia.org/wiki/Special:Contributions/1RadicalOne" target="_blank">1RadicalOne</a>
-    for sharing his cool icons via the Creative Commons license.
+    <div>
+      Thanks to <a href="http://commons.wikimedia.org/wiki/Special:Contributions/1RadicalOne" target="_blank">1RadicalOne</a>
+      for sharing his cool icons via the Creative Commons license.
+    </div>
+    <div>
+      <a href="http://github.com/arsduo/trafficlight/">Trafficlight on Github</a> | 
+      <a href="http://demos.alexkoppel.com/trafficlight/tests//">Trafficlight tests (incomplete)</a>
+    </div>
   </div>
 </body>
 </html>

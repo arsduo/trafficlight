@@ -30,7 +30,8 @@
       failedClass: "trafficlight-failed",
       autostart: true,
       startStep: 0,
-      args: {}
+      args: {},
+      ajaxOptions: {}
     },
     
     paused: false,
@@ -38,9 +39,8 @@
     results: [],
   
     _create: function() {
-      console.log("Creating trafficlight!");
       var opts = this.options;
-
+      
       this._validateSteps(opts.steps)._initLights();
     
       opts.currentStep = opts.startStep || 0;
@@ -87,13 +87,17 @@
       return this;
     },
     
+    reset: function() {
+      this._initLights().options.currentStep = 0;
+      return this;
+    },
+    
     pause: function() {
       this.paused = true;
       return this;
     },
   
     start: function(startStep) {
-      console.log("Starting");
       if (startStep) {
         this.options.currentStep = startStep;
       }
@@ -109,7 +113,7 @@
       var options = this.options,
           currentStep = options.currentStep || 0, 
           step = options.steps[currentStep],
-          destination, node, data, that = this;
+          destination, node, data, jQoptions, that = this;
       
       var lastResults = this.results[currentStep - 1];
       
@@ -119,8 +123,6 @@
         // store the data and use it if possible, so we can rerun steps
         // is this the right way to do it, or should we merge data back in?
         data = $.extend({}, this.options.args || {}, step.args || {});  
-        console.log("data is %o", step.data)
-        
         
         if (typeof(destination) === "function") {
           // if they've supplied a function, call it
@@ -131,7 +133,8 @@
         node.removeClass(options.toDoClass).removeClass(options.doneClass).removeClass(options.failedClass).addClass(options.doingClass);
 
         // now make the Ajax call
-        jQuery.ajax({
+        // incorporating any additional ajax options provided
+        jQoptions = $.extend({}, this.options.ajaxOptions || {}, {
           url: destination,
           data: data,
           type: step.method || "get",
@@ -144,6 +147,7 @@
             }])
           }
         })
+        jQuery.ajax(jQoptions)
       }
       else {
         throw("Trafficlight told to proceed to step " + currentStep + " but there are no details for it!")
@@ -161,8 +165,6 @@
       
       // store data and clean up temporary arguments
       this.results[step] = data;
-      
-      console.log("Step %d passed!", options.currentStep);
       
       // update the DOM node
       $(step.selector).removeClass(options.toDoClass).removeClass(options.doingClass).removeClass(options.failedClass).addClass(options.doneClass);      
