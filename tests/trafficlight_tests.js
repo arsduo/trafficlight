@@ -55,10 +55,6 @@ QUnit.specify("The trafficlight plugin", function() {
           deepEqual(node.trafficlight("option", "args"), {});
         })
 
-        it("provides a default for nextArgs", function() {
-          deepEqual(node.trafficlight("option", "nextArgs"), {});
-        })
-
         it("sets the current step to 0 if not provided", function() {
           strictEqual(node.trafficlight("option", "currentStep"), 0);
         })
@@ -210,7 +206,7 @@ QUnit.specify("The trafficlight plugin", function() {
         });
       });
       
-      it("clears the paused")
+  //    it("clears the paused status")
     })
     
   })
