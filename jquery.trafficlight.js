@@ -120,14 +120,13 @@
       if (step) {
         destination = step.url;
         node = $(step.selector);
-        // store the data and use it if possible, so we can rerun steps
-        // is this the right way to do it, or should we merge data back in?
-        data = $.extend({}, this.options.args || {}, step.args || {});  
         
         if (typeof(destination) === "function") {
           // if they've supplied a function, call it
           destination = destination(lastResults, step);
         }
+
+        data = $.extend({}, this.options.args || {}, step.args || {});  
     
         // update the DOM node
         node.removeClass(options.toDoClass).removeClass(options.doneClass).removeClass(options.failedClass).addClass(options.doingClass);
