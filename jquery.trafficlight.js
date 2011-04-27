@@ -36,6 +36,7 @@
     
     paused: false,
     errored: false,
+    finished: false,
     results: [],
   
     _create: function() {
@@ -181,6 +182,7 @@
       
       if (options.currentStep === options.steps.length) {
         // we're done!
+        this.finished = true;
         this._trigger("complete", null, successData);
       }
       else if (!this.paused) {
@@ -228,9 +230,13 @@
       $.extend(this.options.args, newArgs);
       return this;
     },
-
+    
     isStopped: function() {
       return this.paused || this.errored;
+    },
+    
+    isFinished: function() {
+      return this.finished;
     }
   });
 }(jQuery))
